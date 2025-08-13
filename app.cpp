@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include	<iostream>
+#include	<iomanip>
 #include	<cstdlib>
 #include	<cstdio>
 #include    <fstream>
@@ -26,6 +27,15 @@ bool CheckStudentExists(List*, const char*);
 List* studentList = new List;
 
 void replaceUnderscores(char*);
+
+struct Info {
+    string course;
+    int numOfStudents = 0;
+    int totalBooksBorrowed = 0;
+    int totalOverdueBooks = 0;
+    double totalOverdueFine = 0.0;
+};
+
 
 int main() {
 	int choice;
@@ -96,13 +106,56 @@ int main() {
             break;
         }
         case 6: {
-
+            if (computeAndDisplayStatistics(studentList)) {
+                cout << "Statistics computed successfully.\n\n";
+            }
+            else {
+                cout << "Failed to compute statistics.\n\n";
+            }
+            break;
         }
         case 7: {
-
+            char callNum[20];
+            cout << "Enter call number to search for students: ";
+            cin >> callNum;
+            if (printStuWithSameBook(studentList, callNum)) {
+                cout << "Students with the same book displayed successfully.\n\n";
+            }
+            else {
+                cout << "Failed to find students with the same book.\n\n";
+            }
+            break;
         }
         case 8: {
-
+            List* type1 = new List;
+            List* type2 = new List;
+            if (!displayWarnedStudent(studentList, type1, type2))
+            {
+                cout << "There is no record of warned student\n" << endl;
+            }
+            else
+            {
+                cout << "\nWarned student list: ";
+                cout << "\nStudent has more than 2 books that are overdue for 10 or more days :\n";
+                if (type1->empty())
+                {
+                    cout << "No record\n";
+                }
+                else
+                {
+                    Display(type1, 2, 1);
+                }
+                cout << "\nTotal fine is more than RM50.00 and every book in the student's book list are overdue :\n";
+                if (type2->empty())
+                {
+                    cout << "No record\n\n";
+                }
+                else
+                {
+                    Display(type2, 2, 1);
+                }
+                break;
+            }
         }
 
         }
@@ -390,4 +443,181 @@ bool Display(List* list, int source, int detail) {
     return true;
 }
 
+bool computeAndDisplayStatistics(List* list)
+{
+    if (list->empty())
+        return false;
+
+    const int numOfCourses = 5;
+    string courses[numOfCourses] = { "CS", "IA", "IB", "CN", "CT" };
+    Info info[numOfCourses];
+
+    for (int i = 0; i < numOfCourses; i++) {
+        info[i].course = courses[i];
+    }
+
+    for (int i = 1; i <= list->size(); i++) {
+        LibStudent student;
+        list->get(i, student);
+
+        string course = student.course;
+
+        for (int j = 0; j < numOfCourses; j++) {
+
+            if (info[j].course == course) {
+                info[j].numOfStudents++;
+                info[j].totalBooksBorrowed += student.totalbook;
+                info[j].totalOverdueFine += student.total_fine;
+
+                for (int k = 0; k < student.totalbook; k++) {
+
+                    if (student.book[k].fine > 0) {
+                        info[j].totalOverdueBooks++;
+                    }
+                }
+            }
+        }
+    }
+    // Print table
+    cout << left << setw(10) << "Course"
+        << setw(20) << "Number of students"
+        << setw(25) << "Total Books Borrowed"
+        << setw(25) << "Total Overdue Books"
+        << setw(25) << "Total Overdue Fine (RM)" << endl;
+
+    for (int i = 0; i < numOfCourses; i++) {
+        cout << left << setw(10) << info[i].course
+            << setw(20) << info[i].numOfStudents
+            << setw(25) << info[i].totalBooksBorrowed
+            << setw(25) << info[i].totalOverdueBooks
+            << setw(25) << fixed << setprecision(2) << info[i].totalOverdueFine << endl;
+    }
+    return true;
+}
+
+
+bool printStuWithSameBook(List* list, char* callNum) {
+    if (list->empty()) {
+        cout << "The list is empty." << endl;
+        return false;
+    }
+
+    int countNum = 0;
+    LibStudent student;
+
+    cout << "Students who borrowed the book with call number " << callNum << ":" << endl;
+
+    // Iterate through the list to find students with the book
+    for (int i = 1; i <= list->count; i++) {
+        list->get(i, student);
+
+        for (int j = 0; j < student.totalbook; j++) {
+            if (strcmp(student.book[j].callNum, callNum) == 0) {
+                countNum++;
+
+                // Print student details
+                cout << "\nStudent Id = " << student.id << endl;
+                cout << "Name = " << student.name << endl;
+                cout << "Course = " << student.course << endl;
+                cout << "Phone Number = " << student.phone_no << endl;
+                cout << "Borrow Date: ";
+                student.book[j].borrow.print(cout);
+                cout << endl;
+                cout << "Due Date: ";
+                student.book[j].due.print(cout);
+                cout << endl;
+                break; // Exit inner loop once a match is found for this student
+            }
+        }
+    }
+
+    if (countNum == 0) {
+        cout << "\nNo student borrowed the book with call number " << callNum << endl;
+    }
+    else {
+        cout << "\nTotal " << countNum << " students found." << endl;
+    }
+
+    return true;
+}
+
+
+bool displayWarnedStudent(List* list, List* type1, List* type2) {
+    if (list->empty()) {
+        cout << "The list is empty." << endl;
+        return false;
+    }
+
+    // Assume date is 29/3/2020
+    Date current;
+    current.day = 29;
+    current.month = 3;
+    current.year = 2020;
+
+    LibStudent student;
+    for (int i = 1; i <= list->size(); i++) {
+        list->get(i, student);
+
+        int overdue10Days = 0;
+        bool allBooksOverdue = true;
+
+        if (student.totalbook == 0) {
+            allBooksOverdue = false;
+        }
+
+        for (int j = 0; j < student.totalbook; j++) {
+            Date dueDate = student.book[j].due;
+
+            int dayOfOverdue = (current.year * 360 + current.month * 30 + current.day)
+                - (dueDate.year * 360 + dueDate.month * 30 + dueDate.day);
+
+            if (dayOfOverdue >= 10) {
+                overdue10Days++;
+            }
+
+            if (dayOfOverdue <= 0) {
+                allBooksOverdue = false;
+            }
+        }
+        // More than 2 books that are overdue for >= 10 days 
+        if (overdue10Days > 2) {
+            type1->insert(student);
+        }
+
+        // Total fine > RM50.00 && every book are overdue
+        if (allBooksOverdue && student.total_fine > 50) {
+            type2->insert(student);
+        }
+    }
+
+    // Print students in type1 list
+    cout << "\nStudent has more than 2 books that are overdue for 10 or more days :\n";
+    if (type1->empty()) {
+        cout << "No record\n";
+    }
+    else {
+        for (int i = 1; i <= type1->size(); i++) {
+            LibStudent stu;
+            type1->get(i, stu);
+            stu.print(cout);
+            cout << endl;
+        }
+    }
+
+    // Print students in type2 list
+    cout << "\nTotal fine is more than RM50.00 and every book in the student's book list are overdue :\n";
+    if (type2->empty()) {
+        cout << "No record\n\n";
+    }
+    else {
+        for (int i = 1; i <= type2->size(); i++) {
+            LibStudent stu;
+            type2->get(i, stu);
+            stu.print(cout);
+            cout << endl;
+        }
+    }
+
+    return !type1->empty() || !type2->empty();
+}
 
