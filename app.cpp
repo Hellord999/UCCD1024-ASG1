@@ -13,7 +13,7 @@ using namespace std;
 
 bool ReadFile(string, List *);
 bool DeleteRecord(List *, char *);
-bool Display(List, int, int);
+bool Display(List *, int, int);
 bool InsertBook(string, List *);
 bool SearchStudent(List *, char *id, LibStudent &);
 bool computeAndDisplayStatistics(List *);
@@ -25,8 +25,9 @@ int menu();
 bool CheckStudentExists(List*, const char*);
 List* studentList = new List;
 
-int main() {
+void replaceUnderscores(char*);
 
+int main() {
 	int choice;
 	do {
 		choice = menu();
@@ -69,10 +70,30 @@ int main() {
             break;
         }
         case 4: {
-
+            string filename;
+            cout << "Please enter filename: ";
+            cin >> filename;
+            if (InsertBook(filename, studentList)) {
+                cout << "Books inserted successfully.\n\n";
+            }
+            else {
+                cout << "Failed to insert books.\n\n";
+            }
+            break;
         }
         case 5: {
-
+            int source, detail;
+            cout << "Enter source (1 for file, 2 for screen): ";
+            cin >> source;
+            cout << "Enter detail level (1 for student and book, 2 for student only): ";
+            cin >> detail;
+            if (Display(studentList, source, detail)) {
+                cout << "Display successful.\n\n";
+            }
+            else {
+                cout << "Failed to display.\n\n";
+            }
+            break;
         }
         case 6: {
 
@@ -212,6 +233,161 @@ bool SearchStudent(List* list, char* id, LibStudent& stu) {
     }
     cout << "No match for " << id << " found\n\n";
     return false;
+}
+
+void replaceUnderscores(char* s) {
+    for (int i = 0; s[i] != '\0'; i++) {
+        if (s[i] == '_') {
+            s[i] = ' ';
+        }
+    }
+}
+
+bool InsertBook(string filename, List* list) {
+    ifstream inFile(filename.c_str());
+    if (!inFile.is_open()) {
+        cout << "[ERROR] Cannot open file: " << filename << endl;
+        return false;
+    }
+
+    char stu_id[20];
+    while (inFile >> stu_id) {
+        LibBook book;
+        char authors_str[300], title_str[250], publisher_str[30], ISBN_str[11], callNum_str[20];
+        int yearPublished;
+        char borrowDateStr[15], dueDateStr[15];
+
+        inFile >> authors_str;
+        inFile >> title_str;
+        inFile >> publisher_str;
+        inFile >> ISBN_str;
+        inFile >> yearPublished;
+        inFile >> callNum_str;
+        inFile >> borrowDateStr;
+        inFile >> dueDateStr;
+
+        replaceUnderscores(title_str);
+        replaceUnderscores(publisher_str);
+
+        strcpy(book.title, title_str);
+        strcpy(book.publisher, publisher_str);
+        strcpy(book.ISBN, ISBN_str);
+        book.yearPublished = yearPublished;
+        strcpy(book.callNum, callNum_str);
+
+        int authorIndex = 0;
+        char authors_copy[300];
+        strcpy(authors_copy, authors_str); // Make a copy for strtok
+        char* token = strtok(authors_copy, "/");
+        while (token != NULL && authorIndex < 10) {
+            replaceUnderscores(token);
+            book.author[authorIndex] = new char[strlen(token) + 1];
+            strcpy(book.author[authorIndex], token);
+            authorIndex++;
+            token = strtok(NULL, "/");
+        }
+        for (int i = authorIndex; i < 10; i++) {
+            book.author[i] = NULL;
+        }
+
+        sscanf(borrowDateStr, "%d/%d/%d", &book.borrow.day, &book.borrow.month, &book.borrow.year);
+        sscanf(dueDateStr, "%d/%d/%d", &book.due.day, &book.due.month, &book.due.year);
+
+        LibStudent* stu = NULL;
+        Node* cur = list->head;
+        while (cur != NULL) {
+            if (strcmp(cur->item.id, stu_id) == 0) {
+                stu = &cur->item;
+                break;
+            }
+            cur = cur->next;
+        }
+
+        if (stu == NULL) {
+            cout << "[WARNING] Student with ID " << stu_id << " not found. Skipping this book.\n";
+            continue;
+        }
+
+        int toJulian = book.due.year * 360 + book.due.month * 30 + book.due.day;
+        int currentJulian = 2020 * 360 + 3 * 30 + 29;
+        int overdueDays = currentJulian - toJulian;
+        if (overdueDays > 0) {
+            book.fine = overdueDays * 0.50;
+        }
+        else {
+            book.fine = 0.0;
+        }
+
+        if (stu->totalbook < 15) {
+            LibBook* newBook = new LibBook;
+            *newBook = book;
+            stu->book[stu->totalbook] = *newBook;
+            stu->totalbook++;
+            stu->calculateTotalFine();
+        }
+        else {
+            cout << "[WARNING] Student " << stu_id << " already has maximum number of books.\n";
+        }
+    }
+
+    inFile.close();
+    return true;
+}
+
+bool Display(List* list, int source, int detail) {
+    if (list->empty()) {
+        cout << "Error: List is empty.\n";
+        return false;
+    }
+
+    Node* cur = list->head;
+    int studentNum = 1;
+
+    if (source == 1) {
+        string filename = (detail == 1) ? "student_booklist.txt" : "student_info.txt";
+        ofstream outFile(filename.c_str());
+        if (!outFile.is_open()) {
+            cout << "Error: Cannot open output file.\n";
+            return false;
+        }
+
+        while (cur != NULL) {
+            outFile << "\nSTUDENT " << studentNum++ << "\n\n";
+            cur->item.print(outFile);
+
+            if (detail == 1) {
+                outFile << "\nBOOK LIST:\n";
+                for (int i = 0; i < cur->item.totalbook; i++) {
+                    outFile << "\nBook " << (i + 1) << "\n";
+                    cur->item.book[i].print(outFile);
+                }
+            }
+
+            outFile << "\n*****************************************************************************\n";
+            cur = cur->next;
+        }
+
+        outFile.close();
+    }
+    else {
+        while (cur != NULL) {
+            cout << "\nSTUDENT " << studentNum++ << "\n\n";
+            cur->item.print(cout);
+
+            if (detail == 1) {
+                cout << "\nBOOK LIST:\n";
+                for (int i = 0; i < cur->item.totalbook; i++) {
+                    cout << "\nBook " << (i + 1) << "\n";
+                    cur->item.book[i].print(cout);
+                }
+            }
+
+            cout << "\n*****************************************************************************\n";
+            cur = cur->next;
+        }
+    }
+
+    return true;
 }
 
 
