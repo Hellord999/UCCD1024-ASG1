@@ -12,14 +12,14 @@
 
 using namespace std;
 
-bool ReadFile(string, List *);
-bool DeleteRecord(List *, char *);
-bool Display(List *, int, int);
-bool InsertBook(string, List *);
-bool SearchStudent(List *, char *id, LibStudent &);
-bool computeAndDisplayStatistics(List *);
-bool printStuWithSameBook(List *, char *);
-bool displayWarnedStudent(List *, List *, List *);
+bool ReadFile(string, List*);
+bool DeleteRecord(List*, char*);
+bool Display(List*, int, int);
+bool InsertBook(string, List*);
+bool SearchStudent(List*, char* id, LibStudent&);
+bool computeAndDisplayStatistics(List*);
+bool printStuWithSameBook(List*, char*);
+bool displayWarnedStudent(List*, List*, List*);
 int menu();
 
 //ADDITIONAL FUNCTIONS
@@ -38,10 +38,10 @@ struct Info {
 
 
 int main() {
-	int choice;
-	do {
-		choice = menu();
-		switch (choice) {
+    int choice;
+    do {
+        choice = menu();
+        switch (choice) {
         case -1: {
             cout << "\nInvalid input. Please enter a number from 1 to 9.\n\n";
             continue;
@@ -57,7 +57,7 @@ int main() {
                 cout << "Read File Failed\n\n";
             }
             break;
-            
+
         }
         case 2: {
             char id[20];
@@ -84,7 +84,7 @@ int main() {
             cout << "Please enter filename: ";
             cin >> filename;
             if (InsertBook(filename, studentList)) {
-                cout << "Books inserted successfully.\n\n";
+                cout << "Books inserted successfully to student list.\n\n";
             }
             else {
                 cout << "Failed to insert books.\n\n";
@@ -97,14 +97,28 @@ int main() {
             cin >> source;
             cout << "Enter detail level (1 for student and book, 2 for student only): ";
             cin >> detail;
+
             if (Display(studentList, source, detail)) {
-                cout << "Display successful.\n\n";
+                if (source == 1) {
+
+                    if (detail == 1) {
+                        cout << "Successfully display output to student_booklist.txt\n";
+                    }
+                    else {
+                        cout << "Successfully display output to student_info.txt\n";
+                    }
+                    cout << "Successfully display output\n\n";
+                }
+                else {
+                    cout << "Successfully display output\n\n";
+                }
             }
             else {
                 cout << "Failed to display.\n\n";
             }
             break;
         }
+
         case 6: {
             if (computeAndDisplayStatistics(studentList)) {
                 cout << "Statistics computed successfully.\n\n";
@@ -160,18 +174,18 @@ int main() {
 
         }
 
-      
-	} while (choice != 9);
+
+    } while (choice != 9);
 
 
-	cout << "\n\n";
-	system("pause");
-	return 0;
+    cout << "\n\n";
+    system("pause");
+    return 0;
 }
 
 int menu() {
-	int choice;
-	cout << "1. Read File\n";
+    int choice;
+    cout << "1. Read File\n";
     cout << "2. Delete record\n";
     cout << "3. Search student\n";
     cout << "4. Insert book\n";
@@ -183,8 +197,8 @@ int menu() {
     cout << "Enter your choice: ";
     cin >> choice;
     if (cin.fail()) {//prevent invalid input
-        cin.clear(); 
-        cin.ignore(10000, '\n'); 
+        cin.clear();
+        cin.ignore(10000, '\n');
         return -1;
     }
     if (choice < 1 || choice > 9) {
